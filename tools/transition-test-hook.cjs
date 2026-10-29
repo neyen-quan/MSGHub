@@ -1,4 +1,11 @@
-const {app,BrowserWindow,dialog}=require('electron'),fs=require('node:fs'),path=require('node:path');
+const {app,dialog}=require('electron'),fs=require('node:fs'),path=require('node:path');
 const home=process.env.MSGHUB_QA_HOME,original=app.getPath.bind(app);app.getPath=name=>name==='appData'?path.join(home,'profile'):original(name);
 app.disableHardwareAcceleration();dialog.showMessageBox=async()=>({response:0});
-app.on('browser-window-created',(_e,win)=>win.webContents.on('did-finish-load',async()=>{if(!win.webContents.getURL().endsWith('wizard.html'))return;try{const result=await win.webContents.executeJavaScript('window.transition.start()');fs.writeFileSync(path.join(home,'wizard-result.json'),JSON.stringify(result));}catch(e){fs.writeFileSync(path.join(home,'wizard-error.json'),JSON.stringify({error:e.stack}));}}));
+app.on('browser-window-created',(_e,win)=>{
+ const show=win.show.bind(win);let first=true;win.show=()=>{if(first){first=false;return;}return show();};
+ win.webContents.on('did-finish-load',async()=>{
+  if(!win.webContents.getURL().endsWith('wizard.html'))return;
+  try{const result=await win.webContents.executeJavaScript('(async()=>{await window.transition.ready();return window.transition.start();})()');fs.writeFileSync(path.join(home,'wizard-result.json'),JSON.stringify(result));}
+  catch(e){fs.writeFileSync(path.join(home,'wizard-error.json'),JSON.stringify({error:e.stack}));}
+ });
+});

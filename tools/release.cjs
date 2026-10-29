@@ -65,9 +65,9 @@ async function build(){
   const base=settings.base;const file=path.join(releaseDir,'MSGHub-'+p.version+'-from-'+base.version+'-patch.zip');
   run(process.env.PYTHON||'python',[path.join(tools,'package-files.py'),'patch',out,path.join(base.directory,'assets/msghub-installation.json'),file]);
   engine.validatePatch(fs.readFileSync(file),base.version);feed.patches.push({from:base.version,to:p.version,...asset(file)});
- }else{
-  feed.transitions=require(path.join(tools,'transition-package.cjs')).build(out,releaseDir,repo,p.version);
  }
+ feed.transitions=require(path.join(tools,'transition-package.cjs')).build(out,releaseDir,repo,p.version);
+ const recovery=path.join(releaseDir,'MSGHub-'+p.version+'-Recovery.zip');run(process.env.PYTHON||'python',[path.join(tools,'package-files.py'),'recovery',path.join(tools,'recovery'),recovery]);feed.recoveryTool=asset(recovery);
  for(const file of fs.readdirSync(releaseDir).filter(n=>n.endsWith('.zip')))fs.writeFileSync(path.join(releaseDir,file+'.sha256'),hash(path.join(releaseDir,file))+'  '+file+'\n');
  fs.writeFileSync(path.join(releaseDir,'latest.json'),JSON.stringify(feed,null,2)+'\n');
  console.log('Paquete completo, parche exacto y canal generados.');
@@ -76,9 +76,10 @@ async function build(){
 async function verifyRelease(tag,{publicChannel=false}={}){
  const release=getRelease(tag);if(!release)throw Error('No existe la release esperada.');const directory=path.join(root,'.build/verify-release',tag);const feedPath=downloadAsset(release,'latest.json',directory),feed=JSON.parse(fs.readFileSync(feedPath,'utf8'));
  if(feed.version!==tag.slice(1)||feed.product!=='MSGHub'||feed.appId!==engine.APP_ID)throw Error('El canal publicado tiene otra identidad.');
- const all=[feed.full,...feed.patches,...(feed.transitions||[]),...(feed.repair?[feed.repair]:[])];
+ const all=[feed.full,...feed.patches,...(feed.transitions||[]),...(feed.repair?[feed.repair]:[]),...(feed.recoveryTool?[feed.recoveryTool]:[])];
  for(const asset of all){const prefix='https://github.com/'+repo+'/releases/download/'+tag+'/';if(!asset.url.startsWith(prefix))throw Error('URL de asset fuera de la release.');const name=asset.url.slice(prefix.length);if(name.includes('/')||name.includes('..'))throw Error('Nombre de asset inválido.');const file=downloadAsset(release,name,directory);if(fs.statSync(file).size!==asset.size||hash(file)!==asset.sha256)throw Error('El asset publicado no coincide con el canal: '+name);const side=downloadAsset(release,name+'.sha256',directory);if(fs.readFileSync(side,'utf8').split(/\s/)[0]!==asset.sha256)throw Error('El archivo SHA-256 no coincide.');
   if(asset===feed.full)await extractFull(file,path.join(directory,'full'),feed.version);
+  else if(asset===feed.recoveryTool){const files=engine.unzip(fs.readFileSync(file));if(files.size!==3||!['RECUPERAR-MSG-HUB.vbs','recuperar.ps1','LEEME.txt'].every(n=>files.has(n))||!files.get('recuperar.ps1').toString('utf8').includes('agency.neyen.msghub'))throw Error('Herramienta de recuperación inválida.');}
   else if(asset===feed.repair)verifyRepair(file,feed.version);
   else if((feed.transitions||[]).includes(asset))require(path.join(tools,'transition-package.cjs')).validate(fs.readFileSync(file),asset.from,feed.version);
   else engine.validatePatch(fs.readFileSync(file),asset.from);

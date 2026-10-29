@@ -47,5 +47,6 @@ def repair(root,output,base_inventory):
     print('Small repair archive: '+str(output))
 if __name__=='__main__':
     if sys.argv[1]=='package':package(*sys.argv[2:])
+    elif sys.argv[1]=='recovery':write_zip(sys.argv[3],[(p.name,p.read_bytes()) for p in sorted(Path(sys.argv[2]).iterdir()) if p.is_file()])
     elif sys.argv[1]=='repair':repair(*sys.argv[2:])
     elif sys.argv[1]=='patch':patch(*sys.argv[2:5],legacy='--legacy' in sys.argv[5:])

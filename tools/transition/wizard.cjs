@@ -5,7 +5,7 @@ const engine=require('./app/electron/desktop-update.cjs'),{createChannelClient}=
 const root=path.resolve(__dirname,'../..'),payload=path.join(__dirname,'app'),updates=path.join(root,'.msghub-updates');
 const inventory=JSON.parse(fs.readFileSync(path.join(payload,'assets/msghub-installation.json'))),version=inventory.version;engine.validateInventory(inventory,version);
 app.setName('MSG Hub');app.setAppUserModelId('agency.neyen.msghub');app.setPath('userData',path.join(app.getPath('appData'),'MSG Hub'));
-let win,busy=false,controller,handoff=false;const delay=ms=>new Promise(r=>setTimeout(r,ms));
+let win,busy=false,controller,handoff=false,readyPromise;const delay=ms=>new Promise(r=>setTimeout(r,ms));
 const progress=s=>win.webContents.send('transition-state',s);
 const checkCanceled=()=>{if(controller?.signal.aborted)throw Error('Operación cancelada. Podés volver a intentar.');};
 function legacyJob(){
@@ -40,6 +40,32 @@ async function start(){
   const env={...process.env};delete env.ELECTRON_RUN_AS_NODE;const child=spawn(path.join(recovery,'MSGHubEngine.exe'),[job,'--parent='+process.pid],{cwd:job,env,detached:true,windowsHide:true,stdio:'ignore'});let error;child.on('error',e=>error=e);child.unref();const deadline=Date.now()+25000;while(!fs.existsSync(path.join(job,'ready'))){if(error)throw error;if(Date.now()>deadline)throw Error('El instalador no confirmó su ventana visible. MSG Hub sigue abierto.');await delay(100);}app.quit();return {ok:true};
  }catch(e){progress({message:'No se completó la transición. '+e.message});return {error:e.message,canceled:signal.aborted};}finally{busy=false;controller=null;}
 }
-ipcMain.handle('transition-start',event=>event.sender===win.webContents?start():{error:'Acceso inválido'});
+// A loaded HTML page is not proof that a Windows window is visible. The old
+// updater must receive its health receipt only after this separate handoff.
+function showWizard(){if(!win||win.isDestroyed())return;win.setSkipTaskbar(false);if(win.isMinimized())win.restore();win.show();win.setAlwaysOnTop(true);win.moveTop();win.focus();setTimeout(()=>{if(!win.isDestroyed())win.setAlwaysOnTop(false);},1500);}
+function ready(){return readyPromise||(readyPromise=(async()=>{
+ const until=Date.now()+10000;
+ do{showWizard();await delay(100);}while((!win.isVisible()||win.isMinimized())&&Date.now()<until);
+ if(!win.isVisible()||win.isMinimized())throw Error('No se pudo mostrar el instalador de transición. Se recuperará el programa anterior.');
+ const id=process.env.MSGHUB_UPDATE_JOB;
+ if(id&&/^[\da-f-]{36}$/.test(id)){
+  const journal=JSON.parse(fs.readFileSync(path.join(updates,id,'journal.json')));
+  if(journal.id!==id||journal.to!==version||journal.state!=='awaiting-health')throw Error('El reinicio no coincide con la transición pendiente.');
+  await engine.atomicJsonAsync(path.join(updates,id,'healthy.json'),{id,version,pid:process.pid,visible:true});delete process.env.MSGHUB_UPDATE_JOB;
+ }
+ return {ok:true,visible:true};
+})().catch(error=>{readyPromise=null;throw error;}));}
+ipcMain.handle('transition-ready',event=>event.sender===win.webContents?ready():{error:'Acceso inválido'});
+ipcMain.handle('transition-start',async event=>{if(event.sender!==win.webContents)return {error:'Acceso inválido'};await ready();return start();});
 ipcMain.handle('transition-cancel',event=>{if(event.sender!==win.webContents)return {};if(!handoff)controller?.abort();return {ok:true};});
-app.whenReady().then(()=>{const area=screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;win=new BrowserWindow({width:650,height:500,x:area.x+Math.round((area.width-650)/2),y:area.y+Math.round((area.height-500)/2),title:'Actualizar MSG Hub',icon:path.join(payload,'assets/msghub.png'),show:false,webPreferences:{preload:path.join(__dirname,'wizard-preload.cjs'),sandbox:true,contextIsolation:true}});win.setMenu(null);win.loadFile(path.join(__dirname,'wizard.html')).then(async()=>{win.show();win.focus();const id=process.env.MSGHUB_UPDATE_JOB;if(id&&/^[\da-f-]{36}$/.test(id)){await engine.atomicJsonAsync(path.join(updates,id,'healthy.json'),{id,version,pid:process.pid});delete process.env.MSGHUB_UPDATE_JOB;}});});app.on('window-all-closed',()=>app.quit());
+const ownsTransition=app.requestSingleInstanceLock();if(!ownsTransition)app.quit();
+app.on('second-instance',()=>showWizard());
+process.on('uncaughtException',error=>{try{fs.writeFileSync(path.join(root,'MSGHub-transicion-error.txt'),error.stack||String(error));}catch{}dialog.showErrorBox('Transición de MSG Hub',error.message||String(error));app.exit(1);});
+app.whenReady().then(()=>{
+ if(!ownsTransition)return;
+ const area=screen.getDisplayNearestPoint(screen.getCursorScreenPoint()).workArea;
+ win=new BrowserWindow({width:650,height:500,x:area.x+Math.round((area.width-650)/2),y:area.y+Math.round((area.height-500)/2),title:'Actualizar MSG Hub',icon:path.join(payload,'assets/msghub.png'),show:false,webPreferences:{preload:path.join(__dirname,'wizard-preload.cjs'),sandbox:true,contextIsolation:true}});
+ win.setMenu(null);win.once('ready-to-show',showWizard);
+ return win.loadFile(path.join(__dirname,'wizard.html')).then(()=>ready());
+}).catch(error=>{try{fs.writeFileSync(path.join(root,'MSGHub-transicion-error.txt'),error.stack||String(error));}catch{}dialog.showErrorBox('Transición de MSG Hub',error.message||String(error));app.exit(1);});
+app.on('window-all-closed',()=>app.quit());

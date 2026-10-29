@@ -1,0 +1,7 @@
+RECUPERAR MSG HUB - TRANSICION 1.7.0
+Extrae este ZIP en cualquier carpeta y abre RECUPERAR-MSG-HUB.vbs.
+Selecciona el MSGHub.exe que dejo de abrir y confirma la recuperacion.
+Se restauran solamente main.cjs y package.json desde tu respaldo local.
+Se conserva otra copia de esos dos archivos antes de cambiarlos.
+No se incluyen ni se modifican perfiles, sesiones, notas, tareas ni reloj.
+Luego usa Actualizar en el programa recuperado para instalar la nueva transicion.
