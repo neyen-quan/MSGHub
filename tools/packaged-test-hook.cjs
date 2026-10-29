@@ -48,10 +48,11 @@ if(process.type==='browser'){
      const result=await win.webContents.executeJavaScript(`(async()=>{
        await window.workhub.desktopReady();
        const key='msghub-ci-preserved',old=localStorage.getItem(key);if(${seed}&&!old)localStorage.setItem(key,'retained');
-       return {local:localStorage.getItem(key)};
+       return {local:localStorage.getItem(key),board:localStorage.getItem('msghub-kanban-v1'),muted:localStorage.getItem('msghub-muted-messaging-apps')};
      })()`);
-     const cookies=session.fromPartition('persist:workhub-wa-personal').cookies;let found=await cookies.get({name:'msghub-ci'});if(seed&&!found.length){await cookies.set({url:'https://example.com',name:'msghub-ci',value:'retained',expirationDate:Date.now()/1000+86400});found=await cookies.get({name:'msghub-ci'});}
-     await cookies.flushStore();if(seed)fs.writeFileSync(path.join(qa,'seeded'),'yes');
+     const cookiePartitions={};for(const partition of ['wa-personal','wa-work','telegram','telegram-2','telegram-3','telegram-4']){
+      const cookies=session.fromPartition('persist:workhub-'+partition).cookies;let found=await cookies.get({name:'msghub-ci'});if(seed&&!found.length){await cookies.set({url:'https://example.com',name:'msghub-ci',value:'retained',expirationDate:Date.now()/1000+86400});found=await cookies.get({name:'msghub-ci'});}await cookies.flushStore();cookiePartitions[partition]=found[0]?.value||null;
+     }if(seed)fs.writeFileSync(path.join(qa,'seeded'),'yes');
      const handle=win.getNativeWindowHandle().readBigUInt64LE().toString();
      const windowIcon=JSON.parse(await new Promise((resolve,reject)=>require('node:child_process').execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(__dirname,'window-icon.ps1'),'-WindowHandle',handle],{encoding:'utf8',timeout:15000},(error,stdout)=>error?reject(error):resolve(stdout))));
      const repaired=electron.shell.readShortcutLink(movedShortcut),untouched=electron.shell.readShortcutLink(otherShortcut);
@@ -59,7 +60,7 @@ if(process.type==='browser'){
      write('shortcut-relocation.json',{ok:true,target:repaired.target,icon:repaired.icon,otherHubPreserved:true});
      const probeResource=resource=>new Promise((resolve,reject)=>require('node:child_process').execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(__dirname,'window-icon.ps1'),'-ResourcePath',resource],{encoding:'utf8',timeout:15000},(error,stdout)=>error?reject(error):resolve(JSON.parse(stdout))));
      const shellGreen=(await probeResource(repaired.icon)).greenPixels,nativeGreen=(await probeResource(path.join(root,'MSGHub.exe'))).greenPixels;
-     write('launch-'+version+'.json',{ok:true,version,windowIcon,shellGreen,nativeGreen,local:result.local,cookie:found[0]?.value,root});
+     write('launch-'+version+'.json',{ok:true,version,windowIcon,shellGreen,nativeGreen,local:result.local,cookie:cookiePartitions['wa-personal'],cookiePartitions,board:result.board,muted:result.muted,root});
      if(process.env.MSGHUB_QA_FROM===version&&process.env.MSGHUB_QA_PATCH&&!fs.existsSync(path.join(qa,'requested'))){fs.writeFileSync(path.join(qa,'requested'),'yes');await win.webContents.executeJavaScript('window.workhub.desktopUpdate()');}
     }else if(url.endsWith('/electron/update-center.html')&&process.env.MSGHUB_QA_PATCH){
      capture(win.webContents,'center');await new Promise(r=>setTimeout(r,300));await win.webContents.executeJavaScript("window.workHubUpdater.command('local')");
