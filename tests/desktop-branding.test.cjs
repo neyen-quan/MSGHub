@@ -1,0 +1,28 @@
+const {test}=require('node:test');
+const assert=require('node:assert/strict');
+const vm=require('node:vm');
+const fs=require('node:fs');
+const path=require('node:path');
+test('window, desktop shortcut and own pinned shortcut share the MSGHub icon and identity',()=>{
+ const writes=[],details=[],icons=[];
+ const source=fs.readFileSync(path.join(__dirname,'../electron/desktop-branding.cjs'),'utf8');
+ const scope={module:{exports:{}},__dirname:'/app/electron',console,process,require:name=>name==='node:fs'?{existsSync:()=>true,readdirSync:p=>p.includes('TaskBar')?['DocsHub.lnk','MSGHub.lnk']:[]} : require(name)};
+ vm.runInNewContext(source,scope);
+ scope.module.exports.applyDesktopBranding({exe:'/app/MSGHub.exe',platform:'win32',app:{getPath:n=>'/'+n},win:{setIcon:p=>icons.push(p),setAppDetails:d=>details.push(d)},shell:{readShortcutLink:p=>({target:p.endsWith('DocsHub.lnk')?'/docs/DocsHub.exe':'/app/MSGHub.exe'}),writeShortcutLink:(...args)=>writes.push(args)}});
+ assert.equal(writes.length,2);assert.ok(writes.every(([p,,o])=>!p.endsWith('DocsHub.lnk')&&o.icon===icons[0]&&o.appUserModelId===details[0].appId));
+ assert.equal(details[0].relaunchCommand,'"/app/MSGHub.exe"');
+});
+test('ICO contains small taskbar sizes and high DPI artwork',()=>{
+ const data=fs.readFileSync(path.join(__dirname,'../assets/msghub.ico'));
+ assert.equal(data.readUInt16LE(2),1);const n=data.readUInt16LE(4),sizes=[];
+ for(let i=0;i<n;i++){const p=6+i*16;sizes.push(data[p]||256);assert.ok(data.readUInt32LE(p+12)+data.readUInt32LE(p+8)<=data.length);}
+ for(const size of [16,24,32,48,64,128,256])assert.ok(sizes.includes(size));
+});
+
+test('moving MSGHub repairs shortcuts identified by its AppUserModelID and leaves other apps untouched',()=>{
+ const writes=[],source=fs.readFileSync(path.join(__dirname,'../electron/desktop-branding.cjs'),'utf8');
+ const scope={module:{exports:{}},__dirname:'/new/electron',console,process,require:n=>n==='node:fs'?{existsSync:()=>true,readdirSync:p=>p.includes('TaskBar')?['moved.lnk','other.lnk']:[]}:require(n)};
+ vm.runInNewContext(source,scope);
+ scope.module.exports.applyDesktopBranding({exe:'/new/MSGHub.exe',platform:'win32',app:{getPath:n=>'/'+n},win:{setIcon(){},setAppDetails(){}},shell:{readShortcutLink:p=>({target:'/old/MSGHub.exe',appUserModelId:p.endsWith('other.lnk')?'another.product':'agency.neyen.msghub'}),writeShortcutLink:(...args)=>writes.push(args)}});
+ assert.equal(writes.length,2);for(const [name,op,details]of writes){assert.equal(op,'update');assert.ok(!name.endsWith('other.lnk'));assert.equal(details.target,'/new/MSGHub.exe');assert.equal(details.cwd,'/new');assert.equal(details.icon,path.join('/new','assets','msghub-taskbar.ico'));assert.equal(details.appUserModelId,'agency.neyen.msghub');}
+});

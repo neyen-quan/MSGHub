@@ -1,0 +1,23 @@
+{
+  "name": "msg-hub-desktop",
+  "version": "1.7.0",
+  "description": "MSG Hub: mensajer\u00eda, tareas y reloj de trabajo",
+  "main": "electron/main.cjs",
+  "license": "MIT",
+  "scripts": {
+    "build": "node tools/build-ui.cjs",
+    "dev": "electron . --dev",
+    "test": "node --test tests/*.test.cjs",
+    "audit": "node tools/audit.cjs",
+    "package:win": "node tools/package-windows.cjs"
+  },
+  "dependencies": {
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "lucide-react": "0.468.0"
+  },
+  "devDependencies": {
+    "electron": "44.4.4",
+    "esbuild": "0.25.12"
+  }
+}

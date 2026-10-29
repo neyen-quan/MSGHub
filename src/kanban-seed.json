@@ -1,0 +1,26 @@
+{
+  "version": 1,
+  "cards": [],
+  "topicOrder": [],
+  "topicGroups": {
+    "Trabajo": [],
+    "Personal": [],
+    "Esports": []
+  },
+  "systemTopics": [],
+  "themeColors": {},
+  "columns": [
+    "Pendiente",
+    "En curso",
+    "Completado",
+    "Futuro"
+  ],
+  "totalsByState": {
+    "Pendiente": 0,
+    "En curso": 0,
+    "Completado": 0,
+    "Futuro": 0
+  },
+  "totalsByTopic": {},
+  "totalCards": 0
+}

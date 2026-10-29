@@ -1,0 +1,3 @@
+MSG Hub: abrir MSGHub.exe desde la carpeta completa.
+Actualizar programa permite buscar e instalar parches online o elegir un ZIP local.
+No borrar runtime ni assets. Los datos permanecen en el perfil MSG Hub.
