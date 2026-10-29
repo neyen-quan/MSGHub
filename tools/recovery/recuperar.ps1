@@ -9,7 +9,11 @@ function Write-Atomic([string]$Source,[string]$Destination){
  try{
   [IO.File]::Copy($Source,$temporary,$false)
   $until=[DateTime]::UtcNow.AddSeconds(60)
-  while($true){try{[IO.File]::Replace($temporary,$Destination,$null);break}catch{if([DateTime]::UtcNow -ge $until){throw};Start-Sleep -Milliseconds 200}}
+  while($true){try{[IO.File]::Replace($temporary,$Destination,[NullString]::Value);break}catch{
+   $cause=$_.Exception;while($cause.InnerException){$cause=$cause.InnerException}
+   if(($cause -isnot [IO.IOException] -and $cause -isnot [UnauthorizedAccessException]) -or [DateTime]::UtcNow -ge $until){throw}
+   Start-Sleep -Milliseconds 200
+  }}
  }finally{if([IO.File]::Exists($temporary)){[IO.File]::Delete($temporary)}}
 }
 function Restore-MSGHub([string]$Folder){
