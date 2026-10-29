@@ -46,7 +46,7 @@ async function prepare(){
  // draft; once the full ZIP exists, keep and reuse its exact bytes.
  if(own?.draft&&!ownFull){
   for(const asset of own.assets)gh('api','--method','DELETE','repos/'+repo+'/releases/assets/'+asset.id);
-  gh('api','--method','PATCH','repos/'+repo+'/releases/'+own.id,'-f','target_commitish='+(process.env.MSGHUB_SOURCE_SHA||process.env.GITHUB_SHA));
+  gh('api','--method','PATCH','repos/'+repo+'/releases/'+own.id,'-f','tag_name='+tag,'-f','target_commitish='+(process.env.MSGHUB_SOURCE_SHA||process.env.GITHUB_SHA));
  }
  const result={reuseOwn:false,base:null};
  if(ownFull){const zip=downloadAsset(own,ownFull.name,path.join(downloadDir,'own'));await extractFull(zip,path.join(root,'.build/MSGHub'),p.version);fs.mkdirSync(path.join(root,'release'),{recursive:true});fs.copyFileSync(zip,path.join(root,'release',ownFull.name));result.reuseOwn=true;}
@@ -84,6 +84,14 @@ async function verifyRelease(tag,{publicChannel=false}={}){
   else engine.validatePatch(fs.readFileSync(file),asset.from);
  }
  if(publicChannel){const {createChannelClient}=require(path.join(root,'electron/update-channel.cjs'));const client=createChannelClient();let failure;for(let i=0;i<8;i++){try{const info=await client.check('https://github.com/'+repo+'/releases/latest/download/latest.json',feed.version);if(info.version===feed.version&&info.upToDate){failure=null;break;}throw Error('El canal todavía no anuncia la release esperada.');}catch(e){failure=e;await new Promise(r=>setTimeout(r,3000));}}if(failure)throw failure;}
+ // Remove only the empty automatically generated orphan left by GitHub when
+ // an unpublished tag was renamed. Published releases and drafts with any
+ // assets or custom content are always retained.
+ if(!release.draft){
+  const generatedBody='Instalación nueva o reparación: Windows-x64.zip. Actualización: Actualizar programa → Buscar actualizaciones → Descargar e instalar. ZIP local disponible.';
+  const orphan=r=>r.draft&&/^untagged-/.test(r.tag_name)&&/^MSGHub \d+\.\d+\.\d+$/.test(r.name||'')&&r.assets.length===0&&r.body===generatedBody;
+  for(const draft of api('repos/'+repo+'/releases?per_page=100').filter(orphan))if(orphan(api('repos/'+repo+'/releases/'+draft.id)))gh('api','--method','DELETE','repos/'+repo+'/releases/'+draft.id);
+ }
  console.log('PASS: release '+tag+', inventarios, tamaños, SHA-256 y assets completos.');return feed;
 }
 async function publish(){
