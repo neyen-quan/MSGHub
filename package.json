@@ -1,6 +1,6 @@
 {
   "name": "msg-hub-desktop",
-  "version": "1.7.0",
+  "version": "1.7.1",
   "description": "MSG Hub: mensajer\u00eda, tareas y reloj de trabajo",
   "main": "electron/main.cjs",
   "license": "MIT",
