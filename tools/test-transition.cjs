@@ -3,7 +3,7 @@ const root=path.resolve(process.env.MSGHUB_SOURCE_ROOT||path.join(__dirname,'..'
 const wait=ms=>new Promise(r=>setTimeout(r,ms));
 async function until(fn,timeout=120000){const end=Date.now()+timeout;while(Date.now()<end){const value=fn();if(value)return value;await wait(100);}throw Error('Timeout de transición real MSG Hub');}
 async function testTransition(){
- const filename=fs.readdirSync(path.join(root,'release')).find(n=>n.includes('-from-1.6.1-transition.zip'));if(!filename)return;
+ const filename=fs.readdirSync(path.join(root,'release')).find(n=>n==='MSGHub-'+require(path.join(root,'package.json')).version+'-transition.zip');if(!filename)return;
  const built=path.join(root,'.build/MSGHub'),home=path.join(root,'.qa/transition'),install=path.join(home,'MSGHub á space');fs.mkdirSync(path.join(install,'electron'),{recursive:true});
  fs.cpSync(path.join(built,'dist'),path.join(install,'dist'),{recursive:true});
  const oldRuntime=path.join(install,'node_modules/electron/dist');fs.mkdirSync(oldRuntime,{recursive:true});fs.cpSync(path.join(built,'runtime'),oldRuntime,{recursive:true});fs.renameSync(path.join(oldRuntime,'MSGHubEngine.exe'),path.join(oldRuntime,'electron.exe'));

@@ -41,6 +41,13 @@ async function prepare(){
  if(!repo||!/^[\w.-]+\/[\w.-]+$/.test(repo))throw Error('No se configuró el repositorio real de GitHub.');
  const p=pkg(),tag='v'+p.version,baseDir=path.join(root,'.build/published-base'),downloadDir=path.join(root,'.build/downloads');fs.mkdirSync(path.join(root,'.build'),{recursive:true});
  const own=getRelease(tag),ownFull=own?.assets.find(a=>a.name==='MSGHub-'+p.version+'-Windows-x64.zip');
+ // A canceled first upload may contain transitions but no full package. Such
+ // an unpublished draft cannot be a delta base. Restart only that incomplete
+ // draft; once the full ZIP exists, keep and reuse its exact bytes.
+ if(own?.draft&&!ownFull&&own.assets.length){
+  for(const asset of own.assets)gh('api','--method','DELETE','repos/'+repo+'/releases/assets/'+asset.id);
+  gh('api','--method','PATCH','repos/'+repo+'/releases/'+own.id,'-f','target_commitish='+(process.env.MSGHUB_SOURCE_SHA||process.env.GITHUB_SHA));
+ }
  const result={reuseOwn:false,base:null};
  if(ownFull){const zip=downloadAsset(own,ownFull.name,path.join(downloadDir,'own'));await extractFull(zip,path.join(root,'.build/MSGHub'),p.version);fs.mkdirSync(path.join(root,'release'),{recursive:true});fs.copyFileSync(zip,path.join(root,'release',ownFull.name));result.reuseOwn=true;}
  const releases=api('repos/'+repo+'/releases?per_page=100').filter(r=>!r.draft&&!r.prerelease&&/^v\d+\.\d+\.\d+$/.test(r.tag_name)&&engine.newer(p.version,r.tag_name.slice(1))).sort((a,b)=>engine.newer(a.tag_name.slice(1),b.tag_name.slice(1))?-1:1);
@@ -84,7 +91,7 @@ async function publish(){
  if(release&&!release.draft){await verifyRelease(tag);console.log('Release publicada inmutable: no se sobrescribe ningún archivo.');return;}
  if(!release){release=JSON.parse(gh('api','--method','POST','repos/'+repo+'/releases','-f','tag_name='+tag,'-f','target_commitish='+source,'-f','name=MSGHub '+pkg().version,'-f','body=Instalación nueva o reparación: Windows-x64.zip. Actualización: Actualizar programa → Buscar actualizaciones → Descargar e instalar. ZIP local disponible.','-F','draft=true'));knownReleases.set(tag,release.id);}
 
- const entries=fs.readdirSync(dir).filter(n=>n.endsWith('.zip')||n.endsWith('.zip.sha256'));entries.push('latest.json');
+ const fullName='MSGHub-'+pkg().version+'-Windows-x64.zip';const entries=[fullName,...fs.readdirSync(dir).filter(n=>n!==fullName&&(n.endsWith('.zip')||n.endsWith('.zip.sha256')))];entries.push('latest.json');
  const existing=filesOfRelease(release);
  for(const name of entries){const local=path.join(dir,name);if(existing.has(name)){const previous=downloadAsset(release,name,path.join(root,'.build/existing-assets'));if(hash(previous)!==hash(local))throw Error('El asset '+name+' ya existe con otros bytes; se conserva, no se sobrescribe.');}else gh('api','--method','POST','https://uploads.github.com/repos/'+repo+'/releases/'+release.id+'/assets?name='+encodeURIComponent(name),'--input',local,'-H','Content-Type: application/octet-stream');}
  await verifyRelease(tag);let latest;try{latest=api('repos/'+repo+'/releases/latest');}catch{}

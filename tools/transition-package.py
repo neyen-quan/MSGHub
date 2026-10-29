@@ -11,5 +11,5 @@ for name in ['wizard.cjs','wizard-preload.cjs','wizard.html']:
  files['electron/transition/'+name]=(Path(__file__).parent/'transition'/name).read_bytes()
 files['electron/main.cjs']=b"require('./transition/wizard.cjs');\n"
 files['package.json']=json.dumps({'name':'msg-hub-desktop','version':new,'main':'electron/main.cjs'}).encode()
-m={'format':1,'appId':'agency.neyen.msghub','version':new,'fromVersions':[old],'files':[{'path':n,'size':len(b),'sha256':hashlib.sha256(b).hexdigest()} for n,b in files.items()]}
+m={'format':1,'appId':'agency.neyen.msghub','version':new,'fromVersions':old.split(','),'files':[{'path':n,'size':len(b),'sha256':hashlib.sha256(b).hexdigest()} for n,b in files.items()]}
 mod.write_zip(out,[('msghub-patch.json',json.dumps(m).encode()),*files.items()])

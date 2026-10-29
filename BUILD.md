@@ -8,6 +8,6 @@ La release se prepara como borrador. Se suben los assets, se vuelven a descargar
 
 Recuperación: Actions → Publicar MSGHub → Run workflow desde main, indicando un tag existente. Se usan las herramientas actuales del pipeline con las fuentes de ese tag. No reejecutar un workflow defectuoso antiguo ni crear releases manuales.
 
-La transición desde 1.6.0/1.6.1 se instala mediante el ZIP compatible con el botón Actualizar antiguo. Al reiniciar se abre el instalador independiente que prepara el lanzador estable y el motor verificado; reutiliza el runtime local si sus hashes coinciden. Si el runtime requerido es distinto, descarga el paquete publicado y extrae solo sus archivos necesarios. Las actualizaciones posteriores se realizan online.
+El ZIP único de transición admite 1.6.0 y 1.6.1 y se instala mediante el ZIP compatible con el botón Actualizar antiguo. Al reiniciar se abre el instalador independiente que prepara el lanzador estable y el motor verificado; reutiliza el runtime local si sus hashes coinciden. Si el runtime requerido es distinto, descarga el paquete publicado y extrae solo sus archivos necesarios. Las actualizaciones posteriores se realizan online.
 
 Las pruebas Windows cubren el EXE, el icono Win32 y el recurso de barra de tareas, un modal nativo real, retención del ZIP durante el modal, instalación y recuperación con progress.json bloqueado por un proceso Windows, conservación de datos sintéticos, y el parche real contra la base publicada.
