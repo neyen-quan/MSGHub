@@ -57,8 +57,9 @@ if(process.type==='browser'){
      const repaired=electron.shell.readShortcutLink(movedShortcut),untouched=electron.shell.readShortcutLink(otherShortcut);
      if(path.resolve(repaired.target).toLowerCase()!==path.resolve(root,'MSGHub.exe').toLowerCase()||repaired.icon!==path.join(root,'assets/msghub-taskbar.ico')||untouched.appUserModelId!=='another.hub')throw Error('Windows shortcut repair failed');
      write('shortcut-relocation.json',{ok:true,target:repaired.target,icon:repaired.icon,otherHubPreserved:true});
-     const shellIcon=await app.getFileIcon(path.join(root,'assets/msghub-taskbar.ico'),{size:'normal'});const pixels=shellIcon.toBitmap();let shellGreen=0;for(let i=0;i<pixels.length;i+=4){if(pixels[i+3]>100&&pixels[i+1]>100&&pixels[i+1]>pixels[i+2]*1.15&&pixels[i+1]>pixels[i]*1.15)shellGreen++;}
-     write('launch-'+version+'.json',{ok:true,version,windowIcon,shellGreen,local:result.local,cookie:found[0]?.value,root});
+     const probeResource=resource=>new Promise((resolve,reject)=>require('node:child_process').execFile('powershell.exe',['-NoProfile','-NonInteractive','-ExecutionPolicy','Bypass','-File',path.join(__dirname,'window-icon.ps1'),'-ResourcePath',resource],{encoding:'utf8',timeout:15000},(error,stdout)=>error?reject(error):resolve(JSON.parse(stdout))));
+     const shellGreen=(await probeResource(repaired.icon)).greenPixels,nativeGreen=(await probeResource(path.join(root,'MSGHub.exe'))).greenPixels;
+     write('launch-'+version+'.json',{ok:true,version,windowIcon,shellGreen,nativeGreen,local:result.local,cookie:found[0]?.value,root});
      if(process.env.MSGHUB_QA_FROM===version&&process.env.MSGHUB_QA_PATCH&&!fs.existsSync(path.join(qa,'requested'))){fs.writeFileSync(path.join(qa,'requested'),'yes');await win.webContents.executeJavaScript('window.workhub.desktopUpdate()');}
     }else if(url.endsWith('/electron/update-center.html')&&process.env.MSGHUB_QA_PATCH){
      capture(win.webContents,'center');await new Promise(r=>setTimeout(r,300));await win.webContents.executeJavaScript("window.workHubUpdater.command('local')");
