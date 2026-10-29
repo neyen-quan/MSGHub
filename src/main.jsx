@@ -8,17 +8,17 @@ import './style.css';
 
 const LOCAL_CONFIG = window.workhub?.privateConfig || {};
 const EMAILS = [
-  { id: 'gmail-laacade', email: LOCAL_CONFIG.emails?.['gmail-laacade'] || '', short: 'Laacade', color: '#4389d1' },
+  { id: 'gmail-laacade', email: LOCAL_CONFIG.emails?.['gmail-laacade'] || '', short: LOCAL_CONFIG.labels?.['gmail-laacade'] || 'Correo 1', color: '#4389d1' },
   { id: 'gmail-neyen', email: LOCAL_CONFIG.emails?.['gmail-neyen'] || '', short: 'Personal', color: '#d75f4a' },
-  { id: 'gmail-hincharc', email: LOCAL_CONFIG.emails?.['gmail-hincharc'] || '', short: 'HinchaRC', color: '#22a889' },
-  { id: 'gmail-quan', email: LOCAL_CONFIG.emails?.['gmail-quan'] || '', short: 'Quan', color: '#8b72dc' },
-  { id: 'gmail-deva', email: LOCAL_CONFIG.emails?.['gmail-deva'] || '', short: 'Deva', color: '#d29b46' },
-  { id: 'gmail-alterframe', email: LOCAL_CONFIG.emails?.['gmail-alterframe'] || '', short: 'Alterframe', color: '#2c9dba' }
+  { id: 'gmail-hincharc', email: LOCAL_CONFIG.emails?.['gmail-hincharc'] || '', short: LOCAL_CONFIG.labels?.['gmail-hincharc'] || 'Correo 3', color: '#22a889' },
+  { id: 'gmail-quan', email: LOCAL_CONFIG.emails?.['gmail-quan'] || '', short: LOCAL_CONFIG.labels?.['gmail-quan'] || 'Correo 4', color: '#8b72dc' },
+  { id: 'gmail-deva', email: LOCAL_CONFIG.emails?.['gmail-deva'] || '', short: LOCAL_CONFIG.labels?.['gmail-deva'] || 'Correo 5', color: '#d29b46' },
+  { id: 'gmail-alterframe', email: LOCAL_CONFIG.emails?.['gmail-alterframe'] || '', short: LOCAL_CONFIG.labels?.['gmail-alterframe'] || 'Correo 6', color: '#2c9dba' }
 ];
 const AI_APPS = [
   { id: 'gpt-personal', name: 'GPT personal', short: 'GPT personal', sub: 'Cuenta guardada en este equipo', icon: Sparkles },
-  { id: 'gpt-alterframe', name: 'GPT secundario', short: 'GPT Alterframe', sub: 'Cuenta guardada en este equipo', icon: Sparkles },
-  { id: 'ia-nico', name: 'IA Nico', short: 'IA Nico', sub: 'Portal de trabajo', icon: PanelsTopLeft }
+  { id: 'gpt-alterframe', name: 'GPT secundario', short: LOCAL_CONFIG.labels?.['gpt-alterframe'] || 'GPT secundario', sub: 'Cuenta guardada en este equipo', icon: Sparkles },
+  { id: 'ia-nico', name: LOCAL_CONFIG.labels?.['ia-nico'] || 'Portal IA', short: LOCAL_CONFIG.labels?.['ia-nico'] || 'Portal IA', sub: 'Portal de trabajo', icon: PanelsTopLeft }
 ];
 const MESSAGING_APPS = [
   { id: 'wa-personal', name: 'WhatsApp Personal', short: 'WhatsApp Personal', icon: MessageCircle },
@@ -39,8 +39,8 @@ const TABS = [
 const TAB_IDS = TABS.map(item => item.id);
 const DEFAULT_AI_WORKSPACE = [
   { id: 'chat-default-personal', service: 'gpt-personal', name: 'GPT Personal', url: 'https://chatgpt.com/', customName: false },
-  { id: 'chat-default-alterframe', service: 'gpt-alterframe', name: 'GPT Alterframe', url: 'https://chatgpt.com/', customName: false },
-  { id: 'chat-default-nico', service: 'ia-nico', name: 'Guía de Nico', url: (LOCAL_CONFIG.urls?.['ia-nico'] || 'https://chatgpt.com/'), customName: false }
+  { id: 'chat-default-alterframe', service: 'gpt-alterframe', name: LOCAL_CONFIG.labels?.['chat-default-alterframe'] || 'GPT secundario', url: 'https://chatgpt.com/', customName: false },
+  { id: 'chat-default-nico', service: 'ia-nico', name: LOCAL_CONFIG.labels?.['chat-default-nico'] || 'Portal IA', url: (LOCAL_CONFIG.urls?.['ia-nico'] || 'https://chatgpt.com/'), customName: false }
 ];
 const AI_PROVIDER_TABS_MIGRATION = 'workhub-ai-provider-tabs-migrated-v1';
 function loadAiWorkspace() {

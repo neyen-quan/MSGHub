@@ -180,7 +180,7 @@ const labels = {
   'gmail-quan': 'Gmail — Cuenta guardada', 'gmail-hincharc': 'Gmail — Cuenta guardada',
   'gmail-deva': 'Gmail — Cuenta guardada', 'gmail-alterframe': 'Gmail — Cuenta guardada',
   'gpt-personal': 'GPT personal',
-  'gpt-alterframe': 'GPT Alterframe', 'ia-nico': 'IA Nico'
+  'gpt-alterframe': privateConfig.labels?.['gpt-alterframe'] || 'GPT secundario', 'ia-nico': privateConfig.labels?.['ia-nico'] || 'Portal IA'
 };
 
 function applyRemoteTheme(webContents, theme) {

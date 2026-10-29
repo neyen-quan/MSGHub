@@ -158,7 +158,7 @@ function TopicEditor({ group, error, onCancel, onSave }) {
     <header><h2>Nuevo grupo de tareas</h2><button type="button" onClick={onCancel} aria-label="Cerrar"><X/></button></header>
     {error && <div role="alert" className="kanban-notice">{error}</div>}
     <label className="kanban-field wide">Sección<select value={section} onChange={e => setSection(e.target.value)}>{GROUPS.map(g => <option key={g}>{g}</option>)}</select></label>
-    <label className="kanban-field wide">Nombre del grupo<input autoFocus required maxLength={80} value={name} onChange={e => setName(e.target.value)} placeholder="Ej.: Rina Hollis"/></label>
+    <label className="kanban-field wide">Nombre del grupo<input autoFocus required maxLength={80} value={name} onChange={e => setName(e.target.value)} placeholder="Ej.: Proyecto nuevo"/></label>
     <p>Después, usá Nueva tarea para agregar tarjetas con fecha dentro del grupo.</p>
     <footer><button type="button" onClick={onCancel}>Cancelar</button><button className="kanban-save-button">Crear grupo</button></footer>
   </form></div>;
