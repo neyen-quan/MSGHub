@@ -44,7 +44,7 @@ async function prepare(){
  // A canceled first upload may contain transitions but no full package. Such
  // an unpublished draft cannot be a delta base. Restart only that incomplete
  // draft; once the full ZIP exists, keep and reuse its exact bytes.
- if(own?.draft&&!ownFull&&own.assets.length){
+ if(own?.draft&&!ownFull){
   for(const asset of own.assets)gh('api','--method','DELETE','repos/'+repo+'/releases/assets/'+asset.id);
   gh('api','--method','PATCH','repos/'+repo+'/releases/'+own.id,'-f','target_commitish='+(process.env.MSGHUB_SOURCE_SHA||process.env.GITHUB_SHA));
  }
