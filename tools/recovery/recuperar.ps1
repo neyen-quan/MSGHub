@@ -1,6 +1,8 @@
 param([string]$Root,[switch]$NoDialogs,[switch]$NoLaunch)
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.Windows.Forms
+Add-Type -AssemblyName System.Management
+function Hash-File([string]$File){$h=[Security.Cryptography.SHA256]::Create();try{([BitConverter]::ToString($h.ComputeHash([IO.File]::ReadAllBytes($File)))).Replace('-','').ToLowerInvariant()}finally{$h.Dispose()}}
 function Read-Json([string]$File){[IO.File]::ReadAllText($File)|ConvertFrom-Json}
 function Write-Atomic([string]$Source,[string]$Destination){
  $temporary=$Destination+'.'+[Guid]::NewGuid().ToString()+'.tmp'
@@ -33,7 +35,7 @@ function Restore-MSGHub([string]$Folder){
   if(![IO.File]::ReadAllText($oldMain).Contains('agency.neyen.msghub')){continue}
   foreach($name in @('package.json','electron/main.cjs')){
    $entry=@($journal.entries|Where-Object {$_.path -eq $name})
-   if($entry.Count -ne 1 -or !$entry[0].existed -or (Get-FileHash -LiteralPath (Join-Path $Folder $name) -Algorithm SHA256).Hash.ToLowerInvariant() -ne $entry[0].sha256){throw 'Los archivos actuales no coinciden con esta transicion. No se modificaron.'}
+   if($entry.Count -ne 1 -or !$entry[0].existed -or (Hash-File (Join-Path $Folder $name)) -ne $entry[0].sha256){throw 'Los archivos actuales no coinciden con esta transicion. No se modificaron.'}
   }
   $found=@{Backup=$backup;Version=$old.version};break
  }
@@ -44,7 +46,8 @@ function Restore-MSGHub([string]$Folder){
  }
  # Match only this installation's executable paths. Never stop all Electron apps.
  $images=@('MSGHub.exe','runtime\MSGHub.exe','runtime\MSGHubEngine.exe','node_modules\electron\dist\electron.exe')|ForEach-Object {(Join-Path $Folder $_).ToLowerInvariant()}
- foreach($process in Get-CimInstance Win32_Process){if($process.ExecutablePath -and $images -contains $process.ExecutablePath.ToLowerInvariant()){Stop-Process -Id $process.ProcessId -Force -ErrorAction SilentlyContinue}}
+ $search=[Management.ManagementObjectSearcher]::new('SELECT ExecutablePath,ProcessId FROM Win32_Process')
+ try{foreach($process in $search.Get()){if($process.ExecutablePath -and $images -contains $process.ExecutablePath.ToLowerInvariant()){try{[Diagnostics.Process]::GetProcessById([int]$process.ProcessId).Kill()}catch{}}}}finally{$search.Dispose()}
  Start-Sleep -Milliseconds 500
  if(Test-Path -LiteralPath (Join-Path $updates 'active.json')){throw 'Se inicio otra actualizacion. Se conservaron los archivos sin cambios.'}
  $checkpoint=Join-Path $updates ('recovery-'+[Guid]::NewGuid().ToString())
