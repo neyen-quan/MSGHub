@@ -63,7 +63,12 @@ jobs:
         run: node "$env:MSGHUB_PIPELINE_TOOLS/release.cjs" prepare
       - name: Instalar dependencias fijadas para Windows
         if: steps.plan.outputs.publish == 'true'
-        run: npm ci
+        shell: pwsh
+        run: |
+          npm ci
+          if($LASTEXITCODE -ne 0){throw 'Falló npm ci'}
+          node node_modules/electron/install.js
+          if($LASTEXITCODE -ne 0){throw 'Falló la descarga verificada de Electron'}
       - uses: ilammy/msvc-dev-cmd@v1
         if: steps.plan.outputs.publish == 'true'
         with:

@@ -5,6 +5,7 @@ async function until(fn,timeout=120000){const end=Date.now()+timeout;while(Date.
 async function testTransition(){
  const filename=fs.readdirSync(path.join(root,'release')).find(n=>n.includes('-from-1.6.1-transition.zip'));if(!filename)return;
  const built=path.join(root,'.build/MSGHub'),home=path.join(root,'.qa/transition'),install=path.join(home,'MSGHub á space');fs.mkdirSync(path.join(install,'electron'),{recursive:true});
+ fs.cpSync(path.join(built,'dist'),path.join(install,'dist'),{recursive:true});
  const oldRuntime=path.join(install,'node_modules/electron/dist');fs.mkdirSync(oldRuntime,{recursive:true});fs.cpSync(path.join(built,'runtime'),oldRuntime,{recursive:true});fs.renameSync(path.join(oldRuntime,'MSGHubEngine.exe'),path.join(oldRuntime,'electron.exe'));
  execFileSync('cl.exe',['/nologo','/utf-8','/O1','/MT','/DUNICODE','/D_UNICODE','/D_CRT_SECURE_NO_WARNINGS','/Fo'+path.join(home,'legacy.obj'),path.join(__dirname,'legacy/launcher.c'),'/Fe'+path.join(install,'MSGHub.exe'),'/link','/SUBSYSTEM:WINDOWS','user32.lib'],{stdio:'inherit'});
  const profile=path.join(home,'profile','MSG Hub');fs.mkdirSync(profile,{recursive:true});

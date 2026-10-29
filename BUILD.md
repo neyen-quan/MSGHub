@@ -1,6 +1,6 @@
 # Compilación y entrega
 
-`npm ci`, `npm test`, `npm run build`. `npm run package:win` requiere Windows x64 y las herramientas MSVC/Windows SDK (se preparan en Actions). Dependencias fijadas en package-lock.json.
+`npm ci`, `node node_modules/electron/install.js`, `npm test`, `npm run build`. `npm run package:win` requiere Windows x64 y las herramientas MSVC/Windows SDK (se preparan en Actions). Dependencias fijadas en package-lock.json.
 
 Un commit a main con versión nueva en package.json y package-lock.json inicia la publicación. CI audita, prueba, compila Windows, descarga y valida el paquete exacto publicado anterior, y crea solo los archivos modificados del parche. Runtime y lanzador sin cambios reutilizan sus bytes publicados. Nunca recompilar un tag para crear una base aproximada.
 
