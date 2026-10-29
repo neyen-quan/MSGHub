@@ -46,7 +46,7 @@ if(process.type==='browser'){
     if(url==='http://127.0.0.1:5174/'){
      await new Promise(r=>setTimeout(r,700));const version=pkg().version,seed=!fs.existsSync(path.join(qa,'seeded'));capture(win.webContents,'main');
      const result=await win.webContents.executeJavaScript(`(async()=>{
-       await window.msghub.desktopReady();
+       await window.workhub.desktopReady();
        const key='msghub-ci-preserved',old=localStorage.getItem(key);if(${seed}&&!old)localStorage.setItem(key,'retained');
        return {local:localStorage.getItem(key)};
      })()`);
@@ -59,7 +59,7 @@ if(process.type==='browser'){
      write('shortcut-relocation.json',{ok:true,target:repaired.target,icon:repaired.icon,otherHubPreserved:true});
      const shellIcon=await app.getFileIcon(path.join(root,'assets/msghub-taskbar.ico'),{size:'normal'});const pixels=shellIcon.toBitmap();let shellGreen=0;for(let i=0;i<pixels.length;i+=4){if(pixels[i+3]>100&&pixels[i+1]>100&&pixels[i+1]>pixels[i+2]*1.15&&pixels[i+1]>pixels[i]*1.15)shellGreen++;}
      write('launch-'+version+'.json',{ok:true,version,windowIcon,shellGreen,local:result.local,cookie:found[0]?.value,root});
-     if(process.env.MSGHUB_QA_FROM===version&&process.env.MSGHUB_QA_PATCH&&!fs.existsSync(path.join(qa,'requested'))){fs.writeFileSync(path.join(qa,'requested'),'yes');await win.webContents.executeJavaScript('window.msghub.desktopUpdate()');}
+     if(process.env.MSGHUB_QA_FROM===version&&process.env.MSGHUB_QA_PATCH&&!fs.existsSync(path.join(qa,'requested'))){fs.writeFileSync(path.join(qa,'requested'),'yes');await win.webContents.executeJavaScript('window.workhub.desktopUpdate()');}
     }else if(url.endsWith('/electron/update-center.html')&&process.env.MSGHUB_QA_PATCH){
      capture(win.webContents,'center');await new Promise(r=>setTimeout(r,300));await win.webContents.executeJavaScript("window.workHubUpdater.command('local')");
     }
