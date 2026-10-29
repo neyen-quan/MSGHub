@@ -90,7 +90,7 @@ module.exports={APP_ID,sha,crc32,version,newer,safeName,allowedFile,unzip,valida
 
 // Format 2 extends the same transaction engine with exact published inventories.
 const nextTurn=()=>new Promise(resolve=>setImmediate(resolve));
-async function retryFile(action,onWait=()=>{}){const until=Date.now()+8000;for(;;){try{return await action();}catch(e){if(!['EPERM','EBUSY','EACCES'].includes(e.code)||Date.now()>until)throw e;onWait();await new Promise(r=>setTimeout(r,200));}}}
+async function retryFile(action,onWait=()=>{}){const until=Date.now()+60000;for(;;){try{return await action();}catch(e){if(!['EPERM','EBUSY','EACCES'].includes(e.code)||Date.now()>until)throw e;onWait();await new Promise(r=>setTimeout(r,200));}}}
 // Unique staging names and asynchronous retry keep Windows sharing locks from
 // corrupting a journal or blocking the installer UI while it waits.
 async function atomicJsonAsync(file,value,onWait=()=>{}){
