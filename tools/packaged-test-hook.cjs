@@ -45,13 +45,13 @@ if(process.type==='browser'){
     const url=win.webContents.getURL();
     if(url==='http://127.0.0.1:5174/'){
      await new Promise(r=>setTimeout(r,700));const version=pkg().version,seed=!fs.existsSync(path.join(qa,'seeded'));capture(win.webContents,'main');
-     write('messaging-'+version+'.json',await require('./test-messaging-ui.cjs')(win.webContents,seed));
+     if(process.env.MSGHUB_QA_MESSAGING==='1')write('messaging-'+version+'.json',await require('./test-messaging-ui.cjs')(win.webContents,seed));
      const result=await win.webContents.executeJavaScript(`(async()=>{
        await window.workhub.desktopReady();
        const key='msghub-ci-preserved',old=localStorage.getItem(key);if(${seed}&&!old)localStorage.setItem(key,'retained');
        return {local:localStorage.getItem(key),board:localStorage.getItem('msghub-kanban-v1'),muted:localStorage.getItem('msghub-muted-messaging-apps')};
      })()`);
-     const cookiePartitions={};for(const partition of ['wa-personal','wa-work','telegram','telegram-2','telegram-3','telegram-4','wa-extra-7','telegram-extra-8']){
+     const cookiePartitions={};for(const partition of ['wa-personal','wa-work','telegram','telegram-2','telegram-3','telegram-4',...(process.env.MSGHUB_QA_MESSAGING==='1'?['wa-extra-7','telegram-extra-8']:[])]){
       const cookies=session.fromPartition('persist:workhub-'+partition).cookies;let found=await cookies.get({name:'msghub-ci'});if(seed&&!found.length){await cookies.set({url:'https://example.com',name:'msghub-ci',value:'retained',expirationDate:Date.now()/1000+86400});found=await cookies.get({name:'msghub-ci'});}await cookies.flushStore();cookiePartitions[partition]=found[0]?.value||null;
      }if(seed)fs.writeFileSync(path.join(qa,'seeded'),'yes');
      const handle=win.getNativeWindowHandle().readBigUInt64LE().toString();
