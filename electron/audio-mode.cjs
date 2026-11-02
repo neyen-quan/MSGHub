@@ -1,6 +1,7 @@
+const { serviceFor } = require('./messaging-accounts.cjs');
 function isMessagingService(id) {
   const serviceId = id?.includes('::') ? id.split('::').at(-1) : id;
-  return ['wa-personal', 'wa-work'].includes(serviceId) || /^telegram(?:-[2-4])?$/.test(serviceId || '');
+  return Boolean(serviceFor(serviceId));
 }
 function setMessagingAudioMuted(webContents, serviceId, enabled) {
   if (!isMessagingService(serviceId) || !webContents || webContents.isDestroyed()) return false;

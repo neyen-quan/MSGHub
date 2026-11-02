@@ -5,6 +5,8 @@ import { MessageCircle, Send, Mail, FolderOpen, Sparkles, ChevronDown, ExternalL
 import TimerPane, { TimerAlarmOverlay } from './TimerPane.jsx';
 import TasksPane from './TasksPane.jsx';
 import './style.css';
+import messagingAccounts from '../electron/messaging-accounts.cjs';
+const { MAX_ACCOUNTS, loadAccounts, addAccount } = messagingAccounts;
 
 const LOCAL_CONFIG = window.workhub?.privateConfig || {};
 const EMAILS = [
@@ -19,14 +21,6 @@ const AI_APPS = [
   { id: 'gpt-personal', name: 'GPT personal', short: 'GPT personal', sub: 'Cuenta guardada en este equipo', icon: Sparkles },
   { id: 'gpt-alterframe', name: 'GPT secundario', short: LOCAL_CONFIG.labels?.['gpt-alterframe'] || 'GPT secundario', sub: 'Cuenta guardada en este equipo', icon: Sparkles },
   { id: 'ia-nico', name: LOCAL_CONFIG.labels?.['ia-nico'] || 'Portal IA', short: LOCAL_CONFIG.labels?.['ia-nico'] || 'Portal IA', sub: 'Portal de trabajo', icon: PanelsTopLeft }
-];
-const MESSAGING_APPS = [
-  { id: 'wa-personal', name: 'WhatsApp Personal', short: 'WhatsApp Personal', icon: MessageCircle },
-  { id: 'wa-work', name: 'WhatsApp Laburo', short: 'WhatsApp Laburo', icon: MessageCircle },
-  { id: 'telegram', name: 'Telegram', short: 'Telegram 1', icon: Send },
-  { id: 'telegram-2', name: 'Telegram 2', short: 'Telegram 2', icon: Send },
-  { id: 'telegram-3', name: 'Telegram 3', short: 'Telegram 3', icon: Send },
-  { id: 'telegram-4', name: 'Telegram 4', short: 'Telegram 4', icon: Send }
 ];
 const DEFAULT_MICROINFLUENCERS_URL = (LOCAL_CONFIG.urls?.microinfluencers || 'https://example.com/');
 const TABS = [
@@ -125,6 +119,14 @@ function App() {
   });
   const [aiChatDialog, setAiChatDialog] = useState(null);
   const [aiDialogError, setAiDialogError] = useState('');
+  const [messageAccounts, setMessageAccounts] = useState(() => {
+    try { return loadAccounts(JSON.parse(localStorage.getItem('msghub-messaging-accounts') || 'null')); }
+    catch { return loadAccounts(null); }
+  });
+  const MESSAGING_APPS = useMemo(() => messageAccounts.map(account => ({ ...account, icon: account.service === 'whatsapp' ? MessageCircle : Send })), [messageAccounts]);
+  const [messageDialog, setMessageDialog] = useState(null);
+  const [messageDialogError, setMessageDialogError] = useState('');
+  useEffect(() => { localStorage.setItem('msghub-messaging-accounts', JSON.stringify(messageAccounts)); }, [messageAccounts]);
   const [messageOrder, setMessageOrder] = useState(() => {
     const ids = MESSAGING_APPS.map(app => app.id);
     try { const saved = JSON.parse(localStorage.getItem('msghub-message-order') || '[]'); return [...new Set([...(Array.isArray(saved) ? saved.filter(id => ids.includes(id)) : []), ...ids])]; } catch { return ids; }
@@ -275,7 +277,7 @@ function App() {
       const overlay = document.querySelector('.overlay-bar, .global-layout-bar');
       const caption = document.querySelector('.remote-label, .mosaic-label, .messaging-mosaic-label');
       const top = (chrome?.getBoundingClientRect().height || 0) + (overlay?.getBoundingClientRect().height || 0) + (caption?.getBoundingClientRect().height || 0);
-      const modalOpen = Boolean(folderDialog || aiChatDialog || documentMenu);
+      const modalOpen = Boolean(folderDialog || aiChatDialog || messageDialog || documentMenu);
       if (chrome) {
         const globalIds = modalOpen ? null : mixedGlobalPanels ? globalViewIds : tab === 'messaging' && viewIds.length > 1 ? viewIds : null;
         const aiIds = !modalOpen && (multiAiGlobal ? globalViewIds : tab === 'ai' && !mixedGlobalPanels ? viewIds : null);
@@ -288,7 +290,7 @@ function App() {
     if (chrome) observer.observe(chrome);
     window.addEventListener('resize', update);
     return () => { cancelAnimationFrame(frame); observer.disconnect(); window.removeEventListener('resize', update); };
-  }, [inDesktop, viewIds, layoutKey, folderDialog, aiChatDialog, documentMenu, globalViewIds, mixedGlobalPanels, multiAiGlobal, tab, viewTargets]);
+  }, [inDesktop, viewIds, layoutKey, folderDialog, aiChatDialog, messageDialog, documentMenu, globalViewIds, mixedGlobalPanels, multiAiGlobal, tab, viewTargets]);
 
   useEffect(() => {
     if (!inDesktop || !window.workhub.onSplitRatiosChanged) return;
@@ -691,6 +693,20 @@ function App() {
     setTab('ai');
     setViewError(null);
   }
+  function createMessagingAccount(event) {
+    event.preventDefault();
+    try {
+      const next = addAccount(messageAccounts, messageDialog.service, messageDialog.name);
+      const account = next.at(-1);
+      // Persist before opening the new profile; existing account IDs never change.
+      localStorage.setItem('msghub-messaging-accounts', JSON.stringify(next));
+      setMessageAccounts(next);
+      setMessageOrder(current => [...current, account.id]);
+      if (workMode) setMutedMessageIds(current => [...current, account.id]);
+      setMessageDialog(null);
+      focusMessageApp(account.id);
+    } catch (error) { setMessageDialogError(error.message); }
+  }
   function focusMessageApp(id) {
     setActiveMessageId(id);
     setVisibleMessageIds([id]);
@@ -1005,6 +1021,15 @@ function App() {
 
     {folderDialog && createPortal(<div className="folder-dialog-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setFolderDialog(null); }}><form className="folder-dialog" onSubmit={event => { event.preventDefault(); submitFolderDialog(); }}><label htmlFor="folder-name">{folderDialog.mode === 'rename' ? 'Cambiar nombre de carpeta' : folderDialog.mode.startsWith('rename-') ? 'Cambiar nombre de ventana' : 'Crear carpeta'}</label><input id="folder-name" autoFocus maxLength={40} value={folderDialog.name} onChange={event => setFolderDialog({ ...folderDialog, name: event.target.value })} onKeyDown={event => event.stopPropagation()} /><div><button type="button" onClick={() => setFolderDialog(null)}>Cancelar</button><button type="submit" disabled={!folderDialog.name.trim()}>{folderDialog.mode.startsWith('rename') ? 'Guardar' : 'Crear'}</button></div></form></div>, document.body)}
 
+    {messageDialog && createPortal(<div className="folder-dialog-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setMessageDialog(null); }}><form className="folder-dialog ai-chat-dialog" onSubmit={createMessagingAccount} role="dialog" aria-modal="true" aria-label="Agregar cuenta de mensajería">
+      <label htmlFor="message-service">Agregar cuenta · {messageAccounts.length} / {MAX_ACCOUNTS}</label>
+      <select id="message-service" value={messageDialog.service} onChange={event => setMessageDialog(current => ({ ...current, service: event.target.value }))}><option value="whatsapp">WhatsApp</option><option value="telegram">Telegram</option></select>
+      <input autoFocus maxLength={50} value={messageDialog.name} onChange={event => setMessageDialog(current => ({ ...current, name: event.target.value }))} placeholder="Nombre de la cuenta (opcional)" aria-label="Nombre de la cuenta" />
+      <span className="ai-dialog-caption">La nueva cuenta tiene su propia sesión. Iniciá sesión al abrirla por primera vez.</span>
+      {messageDialogError && <span className="ai-dialog-error" role="alert">{messageDialogError}</span>}
+      <div><button type="button" onClick={() => setMessageDialog(null)}>Cancelar</button><button type="submit" disabled={messageAccounts.length >= MAX_ACCOUNTS}>Agregar cuenta</button></div>
+    </form></div>, document.body)}
+
     {aiChatDialog && createPortal(<div className="folder-dialog-backdrop" onMouseDown={event => { if (event.target === event.currentTarget) setAiChatDialog(null); }}><form className="folder-dialog ai-chat-dialog" onSubmit={createAiChat}>
       <label htmlFor="ai-chat-service">Agregar subpestaña de IA</label>
       <span className="ai-dialog-caption">Cada subpestaña conserva su propio chat y navegación.</span>
@@ -1055,7 +1080,7 @@ function App() {
           </div>;
         })}
       </div>
-      <div className="ai-layout-tools"><span className="ai-visible-count">{visibleMessageIds.length} / 3 visibles · arrastrá para ordenar</span></div>
+      <div className="ai-layout-tools"><button type="button" className="message-add-account" disabled={messageAccounts.length >= MAX_ACCOUNTS} title={messageAccounts.length >= MAX_ACCOUNTS ? 'Alcanzaste el máximo de ocho cuentas' : 'Agregar WhatsApp o Telegram'} onClick={() => { setMessageDialogError(''); setMessageDialog({ service: 'whatsapp', name: '' }); }}><Plus size={14}/> Agregar cuenta ({messageAccounts.length}/{MAX_ACCOUNTS})</button><span className="ai-visible-count">{visibleMessageIds.length} / 3 visibles · arrastrá para ordenar</span></div>
     </section>}
 
     {tab === 'gmail' && <section className="overlay-bar mail-bar">

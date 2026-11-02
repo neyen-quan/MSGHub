@@ -1,3 +1,4 @@
+const { ACCOUNT_CATALOG, serviceFor } = require('./messaging-accounts.cjs');
 const { app, BrowserWindow, WebContentsView, ipcMain, dialog, shell, screen, nativeImage, Notification, powerMonitor } = require('electron');
 const path = require('node:path');
 const fsSync = require('node:fs');
@@ -150,6 +151,7 @@ const gmailSessionProfiles = Object.freeze({
   'gmail-alterframe': 'gmail-alterframe'
 });
 const sites = {
+  ...Object.fromEntries(ACCOUNT_CATALOG.map(account => [account.id, account.service === 'whatsapp' ? 'https://web.whatsapp.com/' : 'https://web.telegram.org/k/'])),
   'wa-personal': 'https://web.whatsapp.com/',
   'wa-work': 'https://web.whatsapp.com/',
   telegram: 'https://web.telegram.org/k/',
@@ -174,6 +176,7 @@ const sites = {
   ]))
 };
 const labels = {
+  ...Object.fromEntries(ACCOUNT_CATALOG.map(account => [account.id, account.name])),
   'wa-personal': 'WhatsApp Personal', 'wa-work': 'WhatsApp Laburo', telegram: 'Telegram 1',
   'telegram-2': 'Telegram 2', 'telegram-3': 'Telegram 3', 'telegram-4': 'Telegram 4',
   'gmail-neyen': 'Gmail — Cuenta guardada', 'gmail-laacade': 'Gmail — Cuenta guardada',
@@ -371,7 +374,7 @@ function installResizableSidebar(webContents, serviceId) {
     let dragging = false;
 
     function findColumns() {
-      if (service === 'wa-personal' || service === 'wa-work') {
+      if (service === 'wa-personal' || service === 'wa-work' || /^wa-extra-[78]$/.test(service)) {
         const side = document.querySelector('#side');
         const main = document.querySelector('#main');
         return side && main ? {side, main} : null;
@@ -550,13 +553,13 @@ function makeView(viewId) {
     const partition = `persist:workhub-${sessionProfile}`;
     view = new WebContentsView({
       webPreferences: { partition, contextIsolation: true, sandbox: true, nodeIntegration: false,
-        ...(['wa-personal', 'wa-work'].includes(id) || /^telegram(?:-[2-4])?$/.test(id) ? { preload: path.join(__dirname, 'attachment-preload.cjs') } : {}) }
+        ...(Boolean(serviceFor(id)) ? { preload: path.join(__dirname, 'attachment-preload.cjs') } : {}) }
     });
     configureNotificationPermissions(view.webContents.session, id);
     setMessagingAudioMuted(view.webContents, viewId, mutedMessagingServices.has(id));
     // Some services reject Electron's default UA. Report the exact Chromium
     // version bundled with this Electron build for messaging and AI sites.
-    if (['wa-personal', 'wa-work', 'gpt-personal', 'gpt-alterframe', 'ia-nico', 'facebook', 'linkedin'].includes(id)) {
+    if (serviceFor(id) === 'whatsapp' || ['gpt-personal', 'gpt-alterframe', 'ia-nico', 'facebook', 'linkedin'].includes(id)) {
       const chromeVersion = process.versions.chrome || '120.0.0.0';
       view.webContents.setUserAgent(`Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/${chromeVersion} Safari/537.36`);
     }
@@ -578,11 +581,11 @@ function makeView(viewId) {
           view.webContents.debugger.sendCommand('Emulation.setDeviceMetricsOverride', { width: 390, height: 844, deviceScaleFactor: 1, mobile: true, screenOrientation: { type: 'portraitPrimary', angle: 0 } }).catch(() => {});
         } catch {}
       }
-      if (id === 'wa-personal' || id === 'wa-work') installWhatsAppSidebarResize(view.webContents, id);
+      if (serviceFor(id) === 'whatsapp') installWhatsAppSidebarResize(view.webContents, id);
       // Gmail already has its own hamburger menu to collapse/expand navigation.
       // Do not inject Workhub's draggable width grip into Gmail: its position
       // differs across accounts and can overlap the message list.
-      else if (['gpt-personal', 'gpt-alterframe', 'ia-nico'].includes(id) || /^telegram(?:-[2-4])?$/.test(id)) installResizableSidebar(view.webContents, sessionProfile);
+      else if (['gpt-personal', 'gpt-alterframe', 'ia-nico'].includes(id) || serviceFor(id) === 'telegram') installResizableSidebar(view.webContents, sessionProfile);
     });
     view.webContents.on('did-navigate', (_event, url) => {
       if (viewId.startsWith('ai-chat-')) win?.webContents.send('ai-view-navigation', { viewId, url });
@@ -1042,7 +1045,7 @@ ipcMain.handle('set-theme', (_event, theme) => {
   return currentTheme;
 });
 ipcMain.handle('set-messaging-mutes', (_event, ids) => {
-  const valid = new Set(['wa-personal', 'wa-work', 'telegram', 'telegram-2', 'telegram-3', 'telegram-4']);
+  const valid = new Set(ACCOUNT_CATALOG.map(account => account.id));
   mutedMessagingServices = new Set(Array.isArray(ids) ? ids.filter(id => valid.has(id)) : []);
   const changed = applyMessagingAudioPreferences(remoteViews, [...mutedMessagingServices]);
   return { ok:true, muted:[...mutedMessagingServices], changed };
@@ -1237,7 +1240,7 @@ require('./attachment-drag.cjs').registerAttachmentDrag({
     const entry = [...remoteViews].find(([, view]) => view.webContents === contents && currentViews.includes(view));
     if (!entry) return false;
     const service = entry[0].split('::').at(-1);
-    if (!['wa-personal', 'wa-work'].includes(service) && !/^telegram(?:-[2-4])?$/.test(service)) return false;
+    if (!serviceFor(service)) return false;
     try {
       const url = new URL(contents.getURL());
       return url.protocol === 'https:' && (
