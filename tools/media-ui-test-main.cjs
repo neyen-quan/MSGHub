@@ -21,7 +21,7 @@ app.whenReady().then(async()=>{
   Menu.buildFromTemplate=items=>{template=items;const menu=build(items),open=menu.popup.bind(menu);menu.popup=options=>{popup=true;open(options);setTimeout(()=>menu.closePopup(),100);};return menu;};
   require(path.join(root,'electron/media-context-menu.cjs')).registerMediaContextMenu(wc);
   clipboard.clear();wc.sendInputEvent({type:'mouseDown',x:500,y:300,button:'right',clickCount:1});wc.sendInputEvent({type:'mouseUp',x:500,y:300,button:'right',clickCount:1});await wait(500);
-  assert.ok(popup);assert.ok(template.some(i=>i.label==='Copiar imagen'));template.find(i=>i.label==='Copiar imagen').click();await wait(400);assert.equal(clipboard.readImage().isEmpty(),false);
+  assert.ok(popup);assert.ok(template.some(i=>i.label==='Copiar imagen'));template.find(i=>i.label==='Copiar imagen').click();await wait(400);const images=await clipboard.read();const copied=images.find(item=>item.types.includes('image/png'));assert.ok(copied);assert.ok((await copied.getType('image/png')).size>0);
   const downloaded=new Promise((resolve,reject)=>{wc.session.once('will-download',(_e,item)=>{item.setSavePath(path.join(path.dirname(report),'media-test.png'));item.once('done',(_e,state)=>state==='completed'?resolve():reject(Error(state)));});});
   template.find(i=>i.label==='Guardar archivo como…').click();await downloaded;
   await wc.executeJavaScript("viewer.style.display='none'");await wait(400);assert.equal(await wc.executeJavaScript("document.querySelector('#workhub-wa-sidebar-resizer-v2').style.display"),'block');
