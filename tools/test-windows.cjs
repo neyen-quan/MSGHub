@@ -13,6 +13,11 @@ function testPatch(base,directory,{fail=false}={}){
  const m={format:2,appId:engine.APP_ID,version:to,fromVersions:[from.version],base:from,target,remove:[],files:Object.entries(changes).map(([name,b])=>({path:name,size:Buffer.byteLength(b),sha256:engine.sha(b)}))};
  const file=path.join(directory,'patch.zip');fs.writeFileSync(file,zip([['msghub-patch.json',JSON.stringify(m)],...Object.entries(changes)]));return {file,from:from.version,to};
 }
+async function mediaUI(){
+ const report=path.join(qa,'media-ui.json'),env={...process.env};delete env.ELECTRON_RUN_AS_NODE;delete env.NODE_OPTIONS;
+ const child=spawn(runtime,[path.join(tools,'media-ui-test-main.cjs'),built,report,'--disable-gpu'],{env,stdio:'ignore'});
+ try{const result=await waitFile(report,40000);assert.equal(result.ok,true,JSON.stringify(result));}finally{try{child.kill();}catch{}}
+}
 async function modal(){
  const dir=path.join(qa,'modal');fs.mkdirSync(dir,{recursive:true});const {fixture,patch}=require(path.join(root,'tools/lib/update-fixture.cjs')),cleanups=[],f=fixture({after:fn=>cleanups.push(fn)});fs.cpSync(f.root,dir,{recursive:true});fs.writeFileSync(path.join(dir,'patch.zip'),patch(f));cleanups.forEach(fn=>fn());
  const report=path.join(qa,'native-modal.json'),env={...process.env};delete env.ELECTRON_RUN_AS_NODE;delete env.NODE_OPTIONS;
@@ -62,6 +67,6 @@ async function repairArchive(){
  const {verifyRepair}=require(path.join(tools,'release.cjs')),{files,inventory}=verifyRepair(path.join(root,'release',name),pkg.version),base=path.join(root,'.build/published-base'),target=path.join(qa,'repair-install');fs.cpSync(base,target,{recursive:true});const personal=path.join(target,'user-project');fs.mkdirSync(personal);fs.writeFileSync(path.join(personal,'keep.txt'),'retained');fs.writeFileSync(path.join(target,'electron/main.cjs'),'partial failed update');
  for(const [name,bytes]of files){const file=engine.inside(target,name);fs.mkdirSync(path.dirname(file),{recursive:true});fs.writeFileSync(file,bytes);}await engine.verifyInventory(target,inventory);assert.equal(fs.readFileSync(path.join(personal,'keep.txt'),'utf8'),'retained');fs.writeFileSync(path.join(qa,'repair.json'),JSON.stringify({ok:true,partialInstallRepaired:true,localFilesPreserved:true,runtimeUnchanged:true}));
 }
-async function main(){if(process.platform!=='win32')throw Error('La aceptación de Windows se ejecuta en Windows.');await repairArchive();await exactDelta();await require(path.join(tools,'test-transition.cjs')).testTransition();await require(path.join(tools,'test-recovery.cjs')).testRecovery();await modal();await packaged();await packaged(true);console.log('PASS: EXE Windows, modal real, delta exacto, datos, progreso y rollback.');}
+async function main(){if(process.platform!=='win32')throw Error('La aceptación de Windows se ejecuta en Windows.');await mediaUI();await repairArchive();await exactDelta();await require(path.join(tools,'test-transition.cjs')).testTransition();await require(path.join(tools,'test-recovery.cjs')).testRecovery();await modal();await packaged();await packaged(true);console.log('PASS: EXE Windows, modal real, delta exacto, datos, progreso y rollback.');}
 if(require.main===module)main().catch(e=>{fs.writeFileSync(path.join(qa,'failure.json'),JSON.stringify({ok:false,error:e.stack},null,2));console.error(e);process.exitCode=1;});
 module.exports={testPatch};

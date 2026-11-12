@@ -1,0 +1,4 @@
+const {test}=require('node:test'),assert=require('node:assert/strict');
+const {mediaMenuTemplate}=require('../electron/media-context-menu.cjs');
+test('viewer image actions use the original image and support blob URLs',()=>{let copy,save;const wc={copyImageAt:(...args)=>copy=args,downloadURL:url=>save=url};const items=mediaMenuTemplate(wc,{mediaType:'image',hasImageContents:true,x:12,y:24,srcURL:'blob:https://web.telegram.org/test'});items[0].click();items[1].click();assert.deepEqual(copy,[12,24]);assert.equal(save,'blob:https://web.telegram.org/test');assert.ok(!items.some(i=>i.role==='paste'));});
+test('paste is available only for editable fields; unsafe URLs are not offered',()=>{const items=mediaMenuTemplate({}, {isEditable:true,editFlags:{canPaste:true},linkURL:'javascript:alert(1)'});assert.equal(items.find(i=>i.role==='paste').enabled,true);assert.ok(!items.some(i=>i.label==='Guardar enlace como…'));assert.deepEqual(mediaMenuTemplate({},{}),[]);});
